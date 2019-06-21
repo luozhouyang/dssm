@@ -1,2 +1,2 @@
-tensorflow==2.0.0a
-naivenmt_datasets
+tensorflow==2.0.0b
+easylib
