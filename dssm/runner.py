@@ -44,6 +44,15 @@ if __name__ == "__main__":
     config.update(model_config)
     config.update(runner_config)
 
+    if not os.path.exists(config['model_dir']):
+        os.makedirs(config['model_dir'])
+
+    tokenizer = SpaceTokenizer()
+    tokenizer.build_from_vocab(config['vocab_file'])
+    logging.info('Build tokenizer from vocab file: %s' % config['vocab_file'])
+    logging.info('vocab size of tokenizer: %d' % tokenizer.vocab_size)
+    config['vocab_size'] = tokenizer.vocab_size
+
     args, _ = parser.parse_known_args()
     if 'mlp' == args.model:
         model = models.build_mlp_model(config)
@@ -52,10 +61,6 @@ if __name__ == "__main__":
     else:
         raise ValueError('Invalid model: %s' % args.model)
 
-    tokenizer = SpaceTokenizer()
-    tokenizer.build_from_vocab(config['vocab_file'])
-    logging.info('Build tokenizer from vocab file: %s' % config['vocab_file'])
-    logging.info('vocab size of tokenizer: %d' % tokenizer.vocab_size)
     dataset = XYZSameFileDataset(x_tokenizer=tokenizer, y_tokenizer=tokenizer, config=None)
 
     runner = KerasModelDatasetRunner(
