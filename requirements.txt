@@ -1,2 +1,3 @@
-tensorflow==2.0.0b
-easylib
+tensorflow==2.0.0
+easylib==0.1.0
+nlp-datasets==1.2.0

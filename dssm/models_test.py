@@ -4,7 +4,9 @@ from dssm import models
 config = {
     'vocab_size': 100,
     'embedding_size': 300,
-    'vec_dim': 256
+    'vec_dim': 256,
+    'query_max_len': 10,
+    'doc_max_len': 10,
 }
 
 

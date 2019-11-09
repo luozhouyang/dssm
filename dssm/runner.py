@@ -1,62 +1,13 @@
 import argparse
+import logging
 import os
+
 import tensorflow as tf
 from easylib.dl import KerasModelDatasetRunner
+from nlp_datasets.tokenizers import SpaceTokenizer
+from nlp_datasets.xyz_dataset import XYZSameFileDataset
 
-from dssm import datasets
 from dssm import models
-
-
-def train(model, config):
-    runner = KerasModelDatasetRunner(
-        model,
-        model_dir=config['model_dir'],
-        model_name='dssm',
-        configs=config,
-        logger_name='dssm')
-    train_dataset = datasets.build_train_dataset(config['train_files'], config)
-    eval_dataset = None
-    if config['eval_files']:
-        eval_dataset = datasets.build_eval_dataset(config['eval_files'], config)
-    runner.train(train_dataset, val_dataset=eval_dataset)
-
-
-def evaluate(model, config):
-    if not config.get('eval_files', None):
-        raise ValueError('`eval_files` must provided.')
-    runner = KerasModelDatasetRunner(
-        model,
-        model_dir=config['model_dir'],
-        model_name='dssm',
-        configs=config,
-        logger_name='dssm')
-    eval_dataset = datasets.build_eval_dataset(config['eval_files'], config)
-    runner.eval(eval_dataset)
-
-
-def predict(model, config):
-    runner = KerasModelDatasetRunner(
-        model,
-        model_dir=config['model_dir'],
-        model_name='dssm',
-        configs=config,
-        logger_name='dssm')
-    predict_dataset = datasets.build_predict_dataset(config['predict_files'], config)
-    res = runner.predict(predict_dataset)
-    print(res[0])
-    print(res[1])
-
-
-# TODO(luozhouyang) Fix export
-def export(model, config):
-    runner = KerasModelDatasetRunner(
-        model,
-        model_dir=config['model_dir'],
-        model_name='dssm',
-        configs=config,
-        logger_name='dssm')
-    runner.export(os.path.join(config['model_dir'], 'export', '1'), ckpt=None)
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -101,13 +52,38 @@ if __name__ == "__main__":
     else:
         raise ValueError('Invalid model: %s' % args.model)
 
+    tokenizer = SpaceTokenizer()
+    tokenizer.build_from_vocab(config['vocab_file'])
+    logging.info('Build tokenizer from vocab file: %s' % config['vocab_file'])
+    logging.info('vocab size of tokenizer: %d' % tokenizer.vocab_size)
+    dataset = XYZSameFileDataset(x_tokenizer=tokenizer, y_tokenizer=tokenizer, config=None)
+
+    runner = KerasModelDatasetRunner(
+        model=model,
+        model_name='dssm',
+        model_dir=config['model_dir'],
+        configs=config)
+
     if 'train' == args.action:
-        train(model, config)
+        train_files = config['train_files']
+        train_dataset = dataset.build_train_dataset(train_files=train_files)
+        eval_dataset = dataset.build_eval_dataset(eval_files=config['eval_files']) if config['eval_files'] else None
+        runner.train(dataset=train_dataset, val_dataset=eval_dataset, ckpt=None)
+
     elif 'eval' == args.action:
-        evaluate(model, config)
+        if not config['eval_files']:
+            raise ValueError('eval_files must not be None in eval mode.')
+        eval_dataset = dataset.build_eval_dataset(eval_files=config['eval_files'])
+        runner.eval(dataset=eval_dataset, ckpt=None)
+        logging.info('Finished to evaluate model.')
     elif 'predict' == args.action:
-        predict(model, config)
+        if not config['predict_files']:
+            raise ValueError('predict_files must not be None in predict mode.')
+        predict_dataset = dataset.build_predict_dataset(eval_files=config['eval_files'])
+        history = runner.predict(dataset=eval_dataset, ckpt=None)
+        logging.info('Finished ti predict files.')
     elif 'export' == args.action:
-        export(model, config)
+        runner.export(os.path.join(config['model_dir'], 'export'), ckpt=None)
+        logging.info('Finished to export models.')
     else:
         raise ValueError('Invalid action: %s' % args.action)

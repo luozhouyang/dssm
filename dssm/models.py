@@ -1,5 +1,6 @@
 import tensorflow as tf
-from tensorflow.python import keras
+
+keras = tf.keras
 
 
 def build_mlp_model(config):
